@@ -79,7 +79,10 @@ export default function Login() {
           const adminDocRef = doc(db, "users", "admin_master_silva");
           const adminDoc = await getDoc(adminDocRef);
           const existing = adminDoc.exists() ? adminDoc.data() : null;
-          if (!existing || existing.email !== MASTER_ADMIN_EMAIL || existing.password !== MASTER_ADMIN_PASSWORD) {
+          // Só cria a conta master se ainda não existir. Nunca repõe a
+          // password sobre uma conta já existente — o dono do site tem de
+          // poder mudar a password livremente sem ela reverter sozinha.
+          if (!existing) {
             await setDoc(adminDocRef, {
               email: MASTER_ADMIN_EMAIL,
               displayName: "Silva Chamo (Admin Master)",
