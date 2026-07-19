@@ -1,0 +1,15 @@
+node_modules
+dist
+.env
+*.log
+provisual-corporate-a16cee3d2250.json
+.DS_Store
+node-compile-cache
+google-oauth.json
+google-tokens.json
+*.backup
+scratch/
+.cloude/
+INICIO/Home - ProvisualCorporate_files/
+INICIO/index.htm
+.vercel

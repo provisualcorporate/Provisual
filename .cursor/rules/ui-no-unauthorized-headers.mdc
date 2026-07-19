@@ -1,0 +1,10 @@
+---
+description: Não adicionar títulos/subtítulos de secção sem pedido explícito do utilizador
+alwaysApply: true
+---
+
+# UI — sem cabeçalhos não pedidos
+
+- **Nunca** criar blocos com título + subtítulo descritivo (ex.: "Contas de Acesso dos Clientes" + parágrafo explicativo) a menos que o utilizador peça explicitamente.
+- Botões de ação primários (criar, adicionar) devem ficar na **mesma linha das tabs**, via `onToolbarChange` / `toolbarActions` em `SiteHomeAdminPanel`.
+- O conteúdo da tab começa directamente (tabela, lista, formulário) — sem card de cabeçalho decorativo.

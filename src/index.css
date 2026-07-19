@@ -1,0 +1,330 @@
+@import "tailwindcss";
+
+@theme {
+  --color-provisual: #a21b7e;
+  --color-site-bg: #e8dfe4;
+  --color-site-bg-soft: #f0e8ec;
+  --font-sans: "Cairo Play", ui-sans-serif, system-ui, sans-serif;
+  --font-cairo: "Cairo Play", sans-serif;
+  --color-border: #e5e7eb;
+  --color-input: #f9fafb;
+}
+
+html {
+  font-size: 16px;
+  font-family: var(--font-sans);
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  @apply text-gray-900 font-sans;
+  margin: 0;
+  font-family: var(--font-sans);
+  min-height: 100%;
+  background: linear-gradient(165deg, var(--color-site-bg-soft) 0%, #e4d9df 52%, var(--color-site-bg) 100%);
+  background-attachment: fixed;
+}
+
+#root {
+  width: 100%;
+  min-height: 100%;
+  font-family: var(--font-sans);
+}
+
+.site-bg {
+  background: transparent;
+}
+
+.site-btn-login {
+  @apply inline-flex items-center justify-center rounded-lg bg-[#a21b7e] px-6 py-1.5 text-[15px] font-normal text-white transition-colors whitespace-nowrap hover:bg-[#8e176e];
+}
+
+.site-nav-link {
+  @apply text-[16px] lg:text-[17px] font-medium text-gray-700 transition-colors whitespace-nowrap hover:text-[#a21b7e];
+}
+
+/* Custom Utilities */
+.bg-provisual {
+  background-color: #a21b7e;
+}
+
+.text-provisual {
+  color: #a21b7e;
+}
+
+.border-provisual {
+  border-color: #a21b7e;
+}
+
+@property --quick-link-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.quick-link-candy {
+  position: relative;
+  border-radius: 1rem;
+  padding: 2px;
+  overflow: hidden;
+}
+
+.quick-link-candy-gradient {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 220%;
+  height: 220%;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    from var(--quick-link-angle),
+    #000000 0%,
+    #a21b7e 22%,
+    #3d001d 45%,
+    #c958a8 68%,
+    #000000 100%
+  );
+  opacity: 0.45;
+  transition: opacity 0.45s ease;
+  animation: quick-link-border-spin 5s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.group:hover .quick-link-candy-gradient,
+.quick-link-candy:hover .quick-link-candy-gradient {
+  opacity: 1;
+  animation-duration: 2.5s;
+}
+
+@keyframes quick-link-border-spin {
+  to {
+    --quick-link-angle: 360deg;
+  }
+}
+
+.quick-link-candy-inner {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  border-radius: calc(1rem - 2px);
+}
+
+@keyframes typewriter-cursor-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.typewriter-cursor {
+  transition: opacity 0.08s linear;
+}
+
+.typewriter-cursor-active {
+  animation: typewriter-cursor-blink 1s step-end infinite;
+}
+
+.process-section-kenburns {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  animation: process-section-kenburns 18s ease-in-out infinite alternate;
+}
+
+@keyframes process-section-kenburns {
+  from {
+    background-size: 100%;
+  }
+  to {
+    background-size: 115%;
+  }
+}
+
+.team-card-shadow {
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.11);
+}
+
+.team-carousel-viewport {
+  overflow: hidden;
+  overflow-clip-margin: 10px;
+}
+
+.site-antetitle {
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.site-section-header {
+  @apply mx-auto max-w-3xl;
+}
+
+.site-section-header--center {
+  @apply mb-12 text-center lg:mb-14;
+}
+
+.site-section-header--compact {
+  @apply mb-0 text-center;
+}
+
+.site-section-header--compact .site-section-kicker {
+  @apply mb-2;
+}
+
+.site-section-header--compact .site-section-title {
+  @apply mb-2;
+}
+
+.site-section-header--compact .site-section-desc {
+  @apply mb-3 leading-snug;
+}
+
+.site-section-kicker {
+  @apply mb-4 flex items-center gap-4;
+}
+
+.site-section-kicker--center {
+  @apply justify-center;
+}
+
+.site-section-kicker-line {
+  @apply h-px w-10 shrink-0;
+}
+
+.site-section-kicker-line--light {
+  @apply bg-white/60;
+}
+
+.site-section-kicker-line--dark {
+  @apply bg-[#D7D7D7];
+}
+
+.site-section-title {
+  @apply mb-4 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl;
+}
+
+.site-section-desc {
+  @apply text-sm leading-relaxed sm:text-base;
+}
+
+.site-interior-banner-title {
+  @apply text-2xl font-bold leading-[1.15] sm:text-3xl lg:text-4xl;
+}
+
+.site-interior-banner-title--rich {
+  @apply text-[1.625rem] leading-[1.1] sm:text-3xl lg:text-[2.125rem];
+}
+
+.site-interior-banner-kicker {
+  @apply text-base leading-none sm:text-lg;
+}
+
+.site-interior-banner-desc {
+  @apply line-clamp-2 text-sm leading-tight sm:text-[0.9375rem];
+}
+
+.site-interior-banner-rich {
+  @apply gap-1;
+}
+
+.site-interior-banner-rich .site-section-kicker {
+  @apply mb-0;
+}
+
+.site-interior-banner-rich .site-interior-banner-title {
+  @apply mt-0.5;
+}
+
+.site-interior-banner-rich .site-interior-banner-desc {
+  @apply mt-0.5;
+}
+
+.client-logo-carousel {
+  overflow: hidden;
+  width: 100%;
+}
+
+.client-logo-cell {
+  position: relative;
+  aspect-ratio: 5 / 3;
+  overflow: hidden;
+  background: transparent;
+  padding: 0;
+  line-height: 0;
+}
+
+.client-logo-cell img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  object-fit: fill;
+}
+
+.contact-field-label {
+  @apply mb-1 block text-sm font-normal text-gray-900;
+}
+
+.contact-field-input {
+  @apply w-full border-0 border-b border-gray-300 bg-transparent py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-[#a21b7e];
+}
+
+.contact-field-textarea {
+  @apply min-h-[110px] w-full resize-none border-0 border-b border-gray-300 bg-transparent py-2.5 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:border-[#a21b7e];
+}
+
+.arquivo-section-fx {
+  background:
+    radial-gradient(ellipse 42% 58% at 6% 18%, rgba(61, 0, 29, 0.62), transparent 72%),
+    radial-gradient(ellipse 38% 52% at 92% 22%, rgba(45, 0, 22, 0.55), transparent 70%),
+    radial-gradient(ellipse 44% 56% at 22% 88%, rgba(55, 0, 26, 0.48), transparent 74%),
+    radial-gradient(ellipse 40% 50% at 78% 82%, rgba(61, 0, 29, 0.52), transparent 72%),
+    radial-gradient(ellipse 55% 48% at 48% 42%, rgba(35, 0, 17, 0.38), transparent 78%),
+    radial-gradient(ellipse 30% 40% at 62% 12%, rgba(61, 0, 29, 0.35), transparent 68%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.06), transparent 58%);
+}
+
+.arquivo-grid-lines {
+  position: absolute;
+  inset: -20%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(circle at center, black 20%, transparent 72%);
+  animation: arquivo-grid-shift 22s linear infinite;
+}
+
+.arquivo-sparkle-pulse {
+  animation: arquivo-sparkle 2.4s ease-in-out infinite;
+}
+
+@keyframes arquivo-grid-shift {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(56px, 56px, 0);
+  }
+}
+
+@keyframes arquivo-sparkle {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
