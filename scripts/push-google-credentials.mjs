@@ -26,10 +26,28 @@ function readJson(name) {
   return JSON.parse(fs.readFileSync(filePath, "utf-8"));
 }
 
-const oauth = readJson("google-oauth.json");
-const service = readJson("provisual-corporate-a16cee3d2250.json");
+// Buscar arquivo de conta de serviço (qualquer arquivo JSON que não seja metadata, package, tsconfig ou vercel)
+const serviceFiles = fs.readdirSync(ROOT).filter(f => 
+  f.endsWith('.json') && 
+  !f.includes('metadata') && 
+  !f.includes('package') && 
+  !f.includes('tsconfig') && 
+  !f.includes('vercel') &&
+  !f.includes('oauth')
+);
+if (serviceFiles.length === 0) {
+  console.error("Nenhum arquivo JSON de conta de serviço encontrado na raiz do projeto.");
+  process.exit(1);
+}
+const serviceFile = serviceFiles[0];
+console.log(`Usando arquivo de conta de serviço: ${serviceFile}`);
 
-if (!oauth.client_id || !oauth.client_secret) {
+const oauth = fs.existsSync(path.join(ROOT, "google-oauth.json")) 
+  ? readJson("google-oauth.json") 
+  : null;
+const service = readJson(serviceFile);
+
+if (oauth && (!oauth.client_id || !oauth.client_secret)) {
   console.error("google-oauth.json inválido (client_id / client_secret).");
   process.exit(1);
 }
@@ -40,13 +58,14 @@ if (!service.client_email || !service.private_key) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const rows = [
-  {
+const rows = [];
+if (oauth) {
+  rows.push({
     key: "google_oauth_config",
     value: { client_id: oauth.client_id, client_secret: oauth.client_secret },
-  },
-  { key: "google_service_account", value: service },
-];
+  });
+}
+rows.push({ key: "google_service_account", value: service });
 
 for (const row of rows) {
   const { error } = await supabase.from("settings").upsert(row);

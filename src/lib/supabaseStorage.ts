@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { compressImage } from './compressImage';
 
 const SUPABASE_URL = import.meta.env.SUPABASE_URL || 'https://avfoqkigxuoofsztfdbi.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2Zm9xa2lneHVvb2ZzenRmZGJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDU0NDMsImV4cCI6MjEwNTY4MTQ0M30.UZg69ECsFZbjfd7iPGSM7OjYCGbTum-bGaPr5rjERAU';
@@ -28,18 +29,23 @@ export interface GalleryPhoto {
 }
 
 // Upload uma foto para o Supabase Storage
+// A imagem é automaticamente comprimida para ≤ 50 KB antes do envio.
 export async function uploadPhotoToAlbum(
   file: File,
   albumId: string
 ): Promise<{ storagePath: string; publicUrl: string }> {
-  const fileExt = file.name.split('.').pop();
+  // Comprimir antes de enviar
+  const compressed = await compressImage(file);
+
+  const fileExt = compressed.name.split('.').pop();
   const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
   const storagePath = `${albumId}/${fileName}`;
 
   const { data, error } = await supabase.storage
     .from(BUCKET_NAME)
-    .upload(storagePath, file, {
+    .upload(storagePath, compressed, {
       upsert: false,
+      contentType: compressed.type,
     });
 
   if (error) throw error;

@@ -3,6 +3,9 @@ dist
 .env
 *.log
 provisual-corporate-a16cee3d2250.json
+gen-lang-client-*.json
+*-credentials.json
+*service-account*.json
 .DS_Store
 node-compile-cache
 google-oauth.json
