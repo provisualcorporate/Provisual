@@ -18,6 +18,7 @@ import {
   Instagram,
 } from "lucide-react";
 import logoHorizontal from "../Logo/logo_horizontal_clean.png";
+import equipaImage from "../IMG/equipa.jpg";
 import QuickLinkIcon from "./site/QuickLinkIcon";
 import SiteFooter from "./site/SiteFooter";
 import TypewriterTitle from "./site/TypewriterTitle";
@@ -784,99 +785,13 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="relative z-0 box-border flex min-h-[320px] w-full items-center justify-center rounded-2xl border border-[#a21b7e]/18 bg-[#a21b7e]/[0.025] px-2 py-4 shadow-[0_8px_24px_4px_rgba(0,0,0,0.12)] sm:min-h-[370px] sm:px-4 lg:min-h-0 lg:px-4 lg:pl-14">
-              <div className="flex w-full max-w-full items-center justify-center gap-1 sm:gap-3">
-                <button
-                  type="button"
-                  onClick={() => setTeamSlide((i) => i - 1)}
-                  aria-label="Profissional anterior"
-                  className="relative z-10 flex h-11 w-11 shrink-0 self-center items-center justify-center rounded-full bg-[#3d001d] text-[#c958a8] transition-colors hover:bg-[#8e176e] hover:text-white"
-                >
-                  <ChevronLeft size={20} strokeWidth={2.25} />
-                </button>
-
-                <div className="team-carousel-viewport relative z-10 min-w-0 flex-1 overflow-hidden">
-                  <motion.div
-                    className="flex items-center"
-                    style={{
-                      width: `${(teamExtended.length / teamVisible) * 100}%`,
-                    }}
-                    animate={{
-                      x: `-${teamSlide * (100 / teamExtended.length)}%`,
-                    }}
-                    transition={
-                      teamResetting
-                        ? { duration: 0 }
-                        : { duration: 0.5, ease: "easeInOut" }
-                    }
-                  >
-                    {teamExtended.map((member, index) => (
-                      <div
-                        key={`${member.name}-${index}`}
-                        className="box-border flex shrink-0 justify-center px-1.5 sm:px-2"
-                        style={{ width: `${100 / teamExtended.length}%` }}
-                      >
-                        <article className="team-card-shadow mx-auto flex w-full max-w-[220px] flex-col overflow-hidden border border-[#a21b7e]/12 bg-white sm:max-w-[260px]">
-                          <div className="relative h-[230px] shrink-0 overflow-hidden sm:h-[282px]">
-                            <OptimizedDriveImage
-                              src={member.image}
-                              alt={member.name}
-                              size="sm"
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-                          <div className="h-2 shrink-0 bg-[#a21b7e]" aria-hidden="true" />
-                          <div className="flex shrink-0 flex-col items-center justify-center px-3 py-3 text-center">
-                            <h4 className="flex items-center justify-center gap-2 text-base font-bold text-[#333] sm:gap-3 sm:text-lg">
-                              <span className="h-px w-7 bg-[#a21b7e] sm:w-9" aria-hidden="true" />
-                              {member.name}
-                              <span className="h-px w-7 bg-[#a21b7e] sm:w-9" aria-hidden="true" />
-                            </h4>
-                            <p className="mt-1 text-sm text-[#a21b7e]">{member.role}</p>
-                            <div className="mt-2 flex justify-center gap-2.5">
-                              <a
-                                href={member.social.facebook}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`Facebook de ${member.name}`}
-                                className="text-[#a21b7e] transition-colors hover:text-[#8e176e]"
-                              >
-                                <Facebook size={15} strokeWidth={2} />
-                              </a>
-                              <a
-                                href={member.social.linkedin}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`LinkedIn de ${member.name}`}
-                                className="text-[#a21b7e] transition-colors hover:text-[#8e176e]"
-                              >
-                                <Linkedin size={15} strokeWidth={2} />
-                              </a>
-                              <a
-                                href={member.social.instagram}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`Instagram de ${member.name}`}
-                                className="text-[#a21b7e] transition-colors hover:text-[#8e176e]"
-                              >
-                                <Instagram size={15} strokeWidth={2} />
-                              </a>
-                            </div>
-                          </div>
-                        </article>
-                      </div>
-                    ))}
-                  </motion.div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setTeamSlide((i) => i + 1)}
-                  aria-label="Profissional seguinte"
-                  className="relative z-10 flex h-11 w-11 shrink-0 self-center items-center justify-center rounded-full bg-[#3d001d] text-[#c958a8] transition-colors hover:bg-[#8e176e] hover:text-white"
-                >
-                  <ChevronRight size={20} strokeWidth={2.25} />
-                </button>
+            <div className="relative z-0 box-border flex min-h-[320px] w-full items-center justify-center rounded-2xl border border-[#a21b7e]/18 bg-white shadow-[0_8px_24px_4px_rgba(0,0,0,0.12)] sm:min-h-[370px] lg:min-h-0 overflow-hidden">
+              <div className="w-full h-full">
+                <img
+                  src={equipaImage}
+                  alt="Nossa equipa"
+                  className="h-full w-full object-cover"
+                />
               </div>
             </div>
           </div>
