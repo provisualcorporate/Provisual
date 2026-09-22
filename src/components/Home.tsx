@@ -18,7 +18,7 @@ import {
   Instagram,
 } from "lucide-react";
 import logoHorizontal from "../Logo/logo_horizontal_clean.png";
-import equipaImage from "../IMG/equipa.jpg";
+import equipaImage from "../IMG/equipaIII.jpg";
 import QuickLinkIcon from "./site/QuickLinkIcon";
 import SiteFooter from "./site/SiteFooter";
 import TypewriterTitle from "./site/TypewriterTitle";
