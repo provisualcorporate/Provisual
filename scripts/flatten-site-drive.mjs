@@ -18,9 +18,9 @@ import {
 } from "../lib/siteDriveHelpers.js";
 
 const ROOT = process.cwd();
-const SUPABASE_URL = "https://gwankhxcbkrtgxopbxwd.supabase.co";
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://avfoqkigxuoofsztfdbi.supabase.co";
 const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3YW5raHhjYmtydGd4b3BieHdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMjY2NzUsImV4cCI6MjA4NTgwMjY3NX0.Wmx16vE2PQBuuyCT0wWrLQTDemMufo2VJeM5NF9IfcY";
+  process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2Zm9xa2lneHVvb2ZzenRmZGJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDU0NDMsImV4cCI6MjEwNTY4MTQ0M30.UZg69ECsFZbjfd7iPGSM7OjYCGbTum-bGaPr5rjERAU";
 
 async function getGoogleAuth() {
   const oauthKeys = JSON.parse(fs.readFileSync(path.join(ROOT, "google-oauth.json"), "utf-8"));

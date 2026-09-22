@@ -8,6 +8,19 @@ import {
   readAdminCache,
   writeAdminCache,
 } from "./siteAdminCache";
+import {
+  createAlbum,
+  updateAlbum,
+  deleteAlbum,
+  uploadPhotoToAlbum,
+  addPhotoToAlbum,
+  deletePhotoFromAlbum,
+  listAlbums,
+  listAlbumPhotos,
+  getAlbumBySlug,
+  type GalleryAlbum as SupabaseAlbum,
+  type GalleryPhoto as SupabasePhoto,
+} from "./supabaseStorage";
 
 export interface SiteDrivePhoto {
   id: string;
@@ -27,6 +40,41 @@ export interface SiteDriveAlbum {
   coverUrl: string | null;
   coverDriveId: string | null;
   photoCount: number;
+}
+
+// Helper function to convert title to slug
+function titleToSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+// Helper function to convert Supabase album to SiteDriveAlbum
+function supabaseAlbumToSiteAlbum(album: SupabaseAlbum & { cover_image_url?: string }): SiteDriveAlbum {
+  return {
+    slug: album.slug,
+    name: album.title,
+    title: album.title,
+    subtitle: album.description || '',
+    image: album.cover_image_url || '',
+    folderId: null,
+    coverUrl: album.cover_image_url || null,
+    coverDriveId: null,
+    photoCount: 0, // Will be updated when photos are loaded
+  };
+}
+
+// Helper function to convert Supabase photo to SiteDrivePhoto
+function supabasePhotoToSitePhoto(photo: SupabasePhoto): SiteDrivePhoto {
+  return {
+    id: photo.id,
+    name: photo.storage_path.split('/').pop() || 'photo.jpg',
+    url: photo.public_url,
+    thumbnailUrl: photo.public_url,
+  };
 }
 
 const HOME_CACHE_KEY = "provisual_home_content_v6";
@@ -117,19 +165,20 @@ export async function fetchSiteHomeContent(): Promise<HomeContent> {
 }
 
 async function fetchSiteGalleryAlbumsFromApi(): Promise<GalleryAlbum[]> {
-  const res = await fetch("/api/site/gallery", { cache: "no-store" });
-  if (!res.ok) throw new Error("API error");
-  const data = await res.json();
-  if (data.cacheStatus?.stale) {
-    syncGalleryPhotosCache().catch(() => {});
+  try {
+    const albums = await listAlbums();
+    const galleryAlbums: GalleryAlbum[] = albums.map(album => ({
+      slug: album.slug,
+      title: album.title,
+      subtitle: album.description || '',
+      image: album.cover_image_url || '',
+    }));
+    
+    writeAdminCache(ADMIN_CACHE_KEYS.gallery, galleryAlbums);
+    return galleryAlbums;
+  } catch (e) {
+    throw new Error("empty");
   }
-  const driveAlbums: SiteDriveAlbum[] = data.albums || [];
-  if (driveAlbums.length > 0) {
-    const merged = driveAlbums.map(mergeAlbumMetadata);
-    writeAdminCache(ADMIN_CACHE_KEYS.gallery, merged);
-    return merged;
-  }
-  throw new Error("empty");
 }
 
 export async function fetchSiteGalleryAlbums(options?: { resync?: boolean }): Promise<GalleryAlbum[]> {
@@ -164,26 +213,13 @@ export async function fetchSiteGalleryAlbums(options?: { resync?: boolean }): Pr
 }
 
 export async function syncSiteGalleryMeta(): Promise<GalleryAlbum[]> {
-  const res = await fetch("/api/site/gallery/sync-meta", { method: "POST" });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Erro ao sincronizar galeria.");
-  }
-  const data = await res.json();
-  return (data.albums || []).map(mergeAlbumMetadata);
+  // A galeria agora está no Supabase Storage, não precisa de sincronização com Drive
+  return await fetchSiteGalleryAlbumsFromApi();
 }
 
-/** Sincroniza fotos Drive → Supabase (uma vez; leituras seguintes usam cache). */
+/** Sincronização não necessária - galeria está no Supabase Storage */
 export async function syncGalleryPhotosCache(slug?: string): Promise<void> {
-  const res = await fetch("/api/site/gallery/sync-photos", {
-    method: "POST",
-    headers: slug ? { "Content-Type": "application/json" } : undefined,
-    body: slug ? JSON.stringify({ slug }) : undefined,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Erro ao sincronizar fotos da galeria.");
-  }
+  // No-op: galeria está no Supabase Storage
 }
 
 function localGalleryPhotos(slug: string, fallbackCover: string): SiteDrivePhoto[] {
@@ -197,28 +233,20 @@ function localGalleryPhotos(slug: string, fallbackCover: string): SiteDrivePhoto
 
 export async function fetchSiteGalleryPhotos(slug: string, fallbackCover: string): Promise<SiteDrivePhoto[]> {
   try {
-    const res = await fetch(`/api/site/gallery/${encodeURIComponent(slug)}/photos`);
-    if (!res.ok) throw new Error("API error");
-    const data = await res.json();
-    const photos: SiteDrivePhoto[] = data.photos || [];
-    if (photos.length > 0) {
-      return photos;
+    const album = await getAlbumBySlug(slug);
+    if (!album) {
+      console.warn(`Álbum ${slug} não encontrado no Supabase`);
+      return [];
     }
+    
+    const photos = await listAlbumPhotos(album.id);
+    return photos.map(supabasePhotoToSitePhoto);
   } catch (e) {
-    console.warn(`Fotos Drive (${slug}) indisponíveis, usando dados locais:`, e);
+    console.warn(`Fotos Supabase (${slug}) indisponíveis, usando dados locais:`, e);
   }
 
   if (import.meta.env.DEV) {
     return localGalleryPhotos(slug, fallbackCover);
-  }
-
-  if (fallbackCover && fallbackCover.includes("/api/drive/")) {
-    return [{
-      id: "cover",
-      name: "capa.jpg",
-      url: fallbackCover,
-      thumbnailUrl: fallbackCover,
-    }];
   }
 
   return [];
@@ -324,40 +352,26 @@ function albumsFromApiPayload(data: Record<string, unknown>): SiteDriveAlbum[] |
 }
 
 async function fetchAdminGalleryAlbumsFromApi(): Promise<SiteDriveAlbum[]> {
-  const res = await fetch("/api/site/gallery?summary=1", { cache: "no-store" });
-  const data = await res.json().catch(() => ({}));
-  if (data.cacheStatus?.stale) {
-    syncGalleryPhotosCache().catch(() => {});
-  }
-  const fromSummary = albumsFromApiPayload(data);
-  if (res.ok && fromSummary?.length) {
-    writeAdminCache(ADMIN_CACHE_KEYS.albums, fromSummary);
-    return fromSummary;
-  }
-
-  if (!res.ok) {
-    const message = data.error || data.message;
-    const fallback = staticAlbumsForAdmin();
-    if (fallback.length) return fallback;
-    if (message === "invalid_grant") {
-      throw new Error(
-        "Ligação ao Google Drive expirou. Reconecte em Google Drive → Conectar e actualize esta página.",
-      );
+  try {
+    const albums = await listAlbums();
+    const siteAlbums = albums.map(supabaseAlbumToSiteAlbum);
+    
+    // Atualizar photoCount para cada álbum
+    for (const album of siteAlbums) {
+      const supabaseAlbum = await getAlbumBySlug(album.slug);
+      if (supabaseAlbum) {
+        const photos = await listAlbumPhotos(supabaseAlbum.id);
+        album.photoCount = photos.length;
+      }
     }
-    throw new Error(message || "Erro ao carregar álbuns.");
+    
+    writeAdminCache(ADMIN_CACHE_KEYS.albums, siteAlbums);
+    return siteAlbums;
+  } catch (e) {
+    const fallback = staticAlbumsForAdmin();
+    writeAdminCache(ADMIN_CACHE_KEYS.albums, fallback);
+    return fallback;
   }
-
-  const fullRes = await fetch("/api/site/gallery", { cache: "no-store" });
-  const fullData = await fullRes.json().catch(() => ({}));
-  const fromFull = albumsFromApiPayload(fullData);
-  if (fullRes.ok && fromFull?.length) {
-    writeAdminCache(ADMIN_CACHE_KEYS.albums, fromFull);
-    return fromFull;
-  }
-
-  const fallback = staticAlbumsForAdmin();
-  writeAdminCache(ADMIN_CACHE_KEYS.albums, fallback);
-  return fallback;
 }
 
 export async function fetchAdminGalleryAlbums(): Promise<SiteDriveAlbum[]> {
@@ -375,22 +389,30 @@ export async function createGalleryAlbum(payload: {
   cover: File;
   photos: File[];
 }): Promise<SiteDriveAlbum> {
-  const form = new FormData();
-  form.append("title", payload.title);
-  form.append("subtitle", payload.subtitle);
-  form.append("cover", payload.cover);
-  payload.photos.forEach((photo) => form.append("photos", photo));
-
-  const res = await fetch("/api/site/gallery/albums", { method: "POST", body: form });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Erro ao criar álbum.");
+  // Gerar slug a partir do título
+  const slug = titleToSlug(payload.title);
+  
+  // Criar álbum no Supabase
+  const album = await createAlbum(slug, payload.title, payload.subtitle);
+  
+  // Upload da capa
+  const { storagePath: coverPath, publicUrl: coverUrl } = await uploadPhotoToAlbum(payload.cover, album.id);
+  
+  // Atualizar álbum com a capa
+  await updateAlbum(album.id, { cover_image_url: coverUrl });
+  
+  // Upload das fotos
+  for (let i = 0; i < payload.photos.length; i++) {
+    const photo = payload.photos[i];
+    const { storagePath, publicUrl } = await uploadPhotoToAlbum(photo, album.id);
+    await addPhotoToAlbum(album.id, storagePath, publicUrl, undefined, i);
   }
-  const data = await res.json();
+  
   clearAdminCache(ADMIN_CACHE_KEYS.albums);
   clearAdminCache(ADMIN_CACHE_KEYS.gallery);
   clearAdminPhotoCaches();
-  return data.album;
+  
+  return supabaseAlbumToSiteAlbum({ ...album, cover_image_url: coverUrl });
 }
 
 async function fetchAdminGalleryPhotosFromApi(
@@ -398,19 +420,25 @@ async function fetchAdminGalleryPhotosFromApi(
   options?: { refresh?: boolean },
 ): Promise<SiteDrivePhoto[]> {
   const cacheKey = ADMIN_CACHE_KEYS.photos(slug);
-  const qs = options?.refresh ? "?refresh=1" : "";
-  const res = await fetch(`/api/site/gallery/${encodeURIComponent(slug)}/photos${qs}`, {
-    cache: "no-store",
-  });
-  if (!res.ok) {
+  
+  try {
+    const album = await getAlbumBySlug(slug);
+    if (!album) {
+      const cached = readAdminCache<SiteDrivePhoto[]>(cacheKey);
+      if (cached?.length) return cached;
+      throw new Error("Álbum não encontrado.");
+    }
+    
+    const photos = await listAlbumPhotos(album.id);
+    const sitePhotos = photos.map(supabasePhotoToSitePhoto);
+    
+    if (sitePhotos.length) writeAdminCache(cacheKey, sitePhotos);
+    return sitePhotos;
+  } catch (e) {
     const cached = readAdminCache<SiteDrivePhoto[]>(cacheKey);
     if (cached?.length) return cached;
     throw new Error("Erro ao carregar fotos do álbum.");
   }
-  const data = await res.json();
-  const photos: SiteDrivePhoto[] = data.photos || [];
-  if (photos.length) writeAdminCache(cacheKey, photos);
-  return photos;
 }
 
 export async function fetchAdminGalleryPhotos(
@@ -438,38 +466,50 @@ export async function updateGalleryAlbum(
     deletedPhotoIds?: string[];
   },
 ): Promise<SiteDriveAlbum> {
-  const form = new FormData();
-  form.append("title", payload.title);
-  form.append("subtitle", payload.subtitle);
-  if (payload.cover) form.append("cover", payload.cover);
-  payload.photos.forEach((photo) => form.append("photos", photo));
-  if (payload.deletedPhotoIds?.length) {
-    form.append("deletedPhotoIds", JSON.stringify(payload.deletedPhotoIds));
-  }
-
-  const res = await fetch(`/api/site/gallery/albums/${encodeURIComponent(slug)}`, {
-    method: "PUT",
-    body: form,
+  const album = await getAlbumBySlug(slug);
+  if (!album) throw new Error("Álbum não encontrado.");
+  
+  // Atualizar metadados
+  await updateAlbum(album.id, {
+    title: payload.title,
+    description: payload.subtitle,
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Erro ao atualizar álbum.");
+  
+  // Upload nova capa se fornecida
+  if (payload.cover) {
+    const { storagePath, publicUrl } = await uploadPhotoToAlbum(payload.cover, album.id);
+    await updateAlbum(album.id, { cover_image_url: publicUrl });
   }
-  const data = await res.json();
+  
+  // Deletar fotos marcadas
+  if (payload.deletedPhotoIds?.length) {
+    for (const photoId of payload.deletedPhotoIds) {
+      await deletePhotoFromAlbum(photoId);
+    }
+  }
+  
+  // Upload novas fotos
+  const existingPhotos = await listAlbumPhotos(album.id);
+  for (let i = 0; i < payload.photos.length; i++) {
+    const photo = payload.photos[i];
+    const { storagePath, publicUrl } = await uploadPhotoToAlbum(photo, album.id);
+    await addPhotoToAlbum(album.id, storagePath, publicUrl, undefined, existingPhotos.length + i);
+  }
+  
   clearAdminCache(ADMIN_CACHE_KEYS.albums);
   clearAdminCache(ADMIN_CACHE_KEYS.gallery);
   clearAdminCache(ADMIN_CACHE_KEYS.photos(slug));
-  return data.album;
+  
+  const updatedAlbum = await getAlbumBySlug(slug);
+  return supabaseAlbumToSiteAlbum(updatedAlbum!);
 }
 
 export async function deleteGalleryAlbum(slug: string): Promise<void> {
-  const res = await fetch(`/api/site/gallery/albums/${encodeURIComponent(slug)}`, {
-    method: "DELETE",
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Erro ao eliminar álbum.");
-  }
+  const album = await getAlbumBySlug(slug);
+  if (!album) throw new Error("Álbum não encontrado.");
+  
+  await deleteAlbum(album.id);
+  
   clearAdminCache(ADMIN_CACHE_KEYS.albums);
   clearAdminCache(ADMIN_CACHE_KEYS.gallery);
   clearAdminCache(ADMIN_CACHE_KEYS.photos(slug));

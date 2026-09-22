@@ -247,7 +247,7 @@ export default forwardRef<AdminEditorHandle, AlbumsAdminTabProps>(function Album
   };
 
   const handleBulkPhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : [];
+    const files = e.target.files ? Array.from(e.target.files) as File[] : [];
     if (files.length) addPendingFiles(files);
     e.target.value = "";
   };

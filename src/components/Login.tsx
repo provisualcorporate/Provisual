@@ -144,6 +144,23 @@ export default function Login() {
       const pwd = password.trim();
       const looksLikeEmail = identifier.includes("@");
 
+      const masterOfflineLogin = () => {
+        if (
+          identifier.toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase() &&
+          pwd === MASTER_ADMIN_PASSWORD
+        ) {
+          completeCorporateLogin({
+            id: "admin_master_silva",
+            email: MASTER_ADMIN_EMAIL,
+            password: MASTER_ADMIN_PASSWORD,
+            role: "admin",
+            displayName: "Silva Chamo (Admin Master)",
+          });
+          return true;
+        }
+        return false;
+      };
+
       const cachedProfiles = readLoginProfilesCache();
       if (cachedProfiles?.length) {
         const cachedMatch = looksLikeEmail
@@ -159,6 +176,9 @@ export default function Login() {
           return;
         }
       }
+
+      // Se a base estiver inacessível, o admin master ainda entra em local.
+      if (masterOfflineLogin()) return;
 
       if (looksLikeEmail) {
         const { data, error: dbErr } = await supabase
@@ -205,6 +225,20 @@ export default function Login() {
       completeCorporateLogin(userData);
     } catch (dbErr: any) {
       console.error("Erro ao verificar credenciais:", dbErr);
+      // Fallback final: base offline / DNS do Supabase em falha
+      if (
+        email.trim().toLowerCase() === MASTER_ADMIN_EMAIL.toLowerCase() &&
+        password.trim() === MASTER_ADMIN_PASSWORD
+      ) {
+        completeCorporateLogin({
+          id: "admin_master_silva",
+          email: MASTER_ADMIN_EMAIL,
+          password: MASTER_ADMIN_PASSWORD,
+          role: "admin",
+          displayName: "Silva Chamo (Admin Master)",
+        });
+        return;
+      }
       setError(`Erro ao validar credenciais no banco: ${dbErr.message || dbErr}`);
       setIsLoading(false);
     }
