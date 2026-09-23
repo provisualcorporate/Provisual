@@ -52,6 +52,22 @@ function titleToSlug(title: string): string {
     .replace(/(^-|-$)/g, '');
 }
 
+// Gera um slug único verificando colisões na base de dados
+async function generateUniqueSlug(title: string): Promise<string> {
+  const base = titleToSlug(title);
+  // Verificar se o slug base já existe
+  const existing = await getAlbumBySlug(base);
+  if (!existing) return base;
+  // Tentar sufixos numéricos até encontrar um livre
+  let suffix = 2;
+  while (true) {
+    const candidate = `${base}-${suffix}`;
+    const collision = await getAlbumBySlug(candidate);
+    if (!collision) return candidate;
+    suffix++;
+  }
+}
+
 // Helper function to convert Supabase album to SiteDriveAlbum
 function supabaseAlbumToSiteAlbum(album: SupabaseAlbum & { cover_image_url?: string }): SiteDriveAlbum {
   return {
@@ -389,8 +405,8 @@ export async function createGalleryAlbum(payload: {
   cover: File;
   photos: File[];
 }): Promise<SiteDriveAlbum> {
-  // Gerar slug a partir do título
-  const slug = titleToSlug(payload.title);
+  // Gerar slug único a partir do título (evita colisão na constraint unique)
+  const slug = await generateUniqueSlug(payload.title);
   
   // Criar álbum no Supabase
   const album = await createAlbum(slug, payload.title, payload.subtitle);
