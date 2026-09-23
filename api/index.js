@@ -1191,6 +1191,7 @@ app.put("/api/gallery/albums/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
+    console.log("Update album request:", { id, updates });
     const { data, error } = await supabaseAdmin
       .from('gallery_albums')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -1198,7 +1199,11 @@ app.put("/api/gallery/albums/:id", async (req, res) => {
       .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase error:", error);
+      throw error;
+    }
+    console.log("Update album success:", data);
     res.json(data);
   } catch (err) {
     console.error("Gallery update album error:", err);
