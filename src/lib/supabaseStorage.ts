@@ -1,17 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { compressImage } from './compressImage';
 
-const SUPABASE_URL = import.meta.env.SUPABASE_URL || 'https://avfoqkigxuoofsztfdbi.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2Zm9xa2lneHVvb2ZzenRmZGJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDU0NDMsImV4cCI6MjEwNTY4MTQ0M30.UZg69ECsFZbjfd7iPGSM7OjYCGbTum-bGaPr5rjERAU';
-const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2Zm9xa2lneHVvb2ZzenRmZGJpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDEwNTQ0MywiZXhwIjoyMTA1NjgxNDQzfQ.qi5FhNAs7uZlnYzYG6lpudrmjaptNiaVaQdRIbns0L8';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://avfoqkigxuoofsztfdbi.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2Zm9xa2lneHVvb2ZzenRmZGJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDU0NDMsImV4cCI6MjEwNTY4MTQ0M30.UZg69ECsFZbjfd7iPGSM7OjYCGbTum-bGaPr5rjERAU';
 
-// Cliente público (leitura)
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Cliente admin — bypassa RLS para operações de escrita (INSERT/UPDATE/DELETE)
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
 
 const BUCKET_NAME = 'gallery-albums';
 
@@ -76,67 +69,44 @@ export async function deletePhotoFromStorage(storagePath: string): Promise<void>
   if (error) throw error;
 }
 
-// Criar um novo álbum
+// Criar um novo álbum (via API)
 export async function createAlbum(
   slug: string,
   title: string,
   description?: string
 ): Promise<GalleryAlbum> {
-  const { data, error } = await supabaseAdmin
-    .from('gallery_albums')
-    .insert({
-      slug,
-      title,
-      description,
-    })
-    .select()
-    .single();
+  const response = await fetch('/api/gallery/albums', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slug, title, description }),
+  });
 
-  if (error) throw error;
-  return data;
+  if (!response.ok) throw new Error('Failed to create album');
+  return response.json();
 }
 
-// Atualizar um álbum
+// Atualizar um álbum (via API)
 export async function updateAlbum(
   id: string,
   updates: Partial<Pick<GalleryAlbum, 'title' | 'description' | 'cover_image_url'>>
 ): Promise<GalleryAlbum> {
-  const { data, error } = await supabaseAdmin
-    .from('gallery_albums')
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .select()
-    .single();
+  const response = await fetch(`/api/gallery/albums/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
 
-  if (error) throw error;
-  return data;
+  if (!response.ok) throw new Error('Failed to update album');
+  return response.json();
 }
 
-// Deletar um álbum (e todas as fotos associadas via CASCADE)
+// Deletar um álbum (via API)
 export async function deleteAlbum(id: string): Promise<void> {
-  // Primeiro deletar todas as fotos do storage
-  const { data: photos } = await supabaseAdmin
-    .from('gallery_photos')
-    .select('storage_path')
-    .eq('album_id', id);
+  const response = await fetch(`/api/gallery/albums/${id}`, {
+    method: 'DELETE',
+  });
 
-  if (photos && photos.length > 0) {
-    const storagePaths = photos.map(p => p.storage_path);
-    await supabaseAdmin.storage
-      .from(BUCKET_NAME)
-      .remove(storagePaths);
-  }
-
-  // Depois deletar o álbum (CASCADE deleta as fotos da tabela)
-  const { error } = await supabaseAdmin
-    .from('gallery_albums')
-    .delete()
-    .eq('id', id);
-
-  if (error) throw error;
+  if (!response.ok) throw new Error('Failed to delete album');
 }
 
 // Listar todos os álbuns
@@ -165,7 +135,7 @@ export async function getAlbumBySlug(slug: string): Promise<GalleryAlbum | null>
   return data;
 }
 
-// Adicionar uma foto a um álbum
+// Adicionar uma foto a um álbum (via API)
 export async function addPhotoToAlbum(
   albumId: string,
   storagePath: string,
@@ -173,20 +143,14 @@ export async function addPhotoToAlbum(
   caption?: string,
   orderIndex?: number
 ): Promise<GalleryPhoto> {
-  const { data, error } = await supabaseAdmin
-    .from('gallery_photos')
-    .insert({
-      album_id: albumId,
-      storage_path: storagePath,
-      public_url: publicUrl,
-      caption,
-      order_index: orderIndex || 0,
-    })
-    .select()
-    .single();
+  const response = await fetch('/api/gallery/photos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ albumId, storagePath, publicUrl, caption, orderIndex }),
+  });
 
-  if (error) throw error;
-  return data;
+  if (!response.ok) throw new Error('Failed to add photo');
+  return response.json();
 }
 
 // Listar fotos de um álbum
@@ -201,36 +165,24 @@ export async function listAlbumPhotos(albumId: string): Promise<GalleryPhoto[]> 
   return data || [];
 }
 
-// Deletar uma foto de um álbum
+// Deletar uma foto de um álbum (via API)
 export async function deletePhotoFromAlbum(photoId: string): Promise<void> {
-  // Primeiro obter o storage path
-  const { data: photo } = await supabaseAdmin
-    .from('gallery_photos')
-    .select('storage_path')
-    .eq('id', photoId)
-    .single();
+  const response = await fetch(`/api/gallery/photos/${photoId}`, {
+    method: 'DELETE',
+  });
 
-  if (photo?.storage_path) {
-    await deletePhotoFromStorage(photo.storage_path);
-  }
-
-  // Depois deletar da tabela
-  const { error } = await supabaseAdmin
-    .from('gallery_photos')
-    .delete()
-    .eq('id', photoId);
-
-  if (error) throw error;
+  if (!response.ok) throw new Error('Failed to delete photo');
 }
 
-// Atualizar ordem das fotos
+// Atualizar ordem das fotos (via API)
 export async function updatePhotoOrder(photoId: string, orderIndex: number): Promise<void> {
-  const { error } = await supabaseAdmin
-    .from('gallery_photos')
-    .update({ order_index: orderIndex })
-    .eq('id', photoId);
+  const response = await fetch(`/api/gallery/photos/${photoId}/order`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderIndex }),
+  });
 
-  if (error) throw error;
+  if (!response.ok) throw new Error('Failed to update photo order');
 }
 
 export { supabase };
