@@ -77,7 +77,11 @@ async function startServer() {
   // Inicializar Supabase para sincronização resiliente de tokens do Google Drive
   const SUPABASE_URL = process.env.SUPABASE_URL || "https://avfoqkigxuoofsztfdbi.supabase.co";
   const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2Zm9xa2lneHVvb2ZzenRmZGJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDU0NDMsImV4cCI6MjEwNTY4MTQ0M30.UZg69ECsFZbjfd7iPGSM7OjYCGbTum-bGaPr5rjERAU";
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2Zm9xa2lneHVvb2ZzenRmZGJpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDEwNTQ0MywiZXhwIjoyMTA1NjgxNDQzfQ.qi5FhNAs7uZlnYzYG6lpudrmjaptNiaVaQdRIbns0L8";
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
   console.log("Supabase inicializado no backend!");
 
   // API routes
@@ -1281,6 +1285,146 @@ async function startServer() {
       res.json({ success: true, message: "Google Drive desconectado com sucesso." });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Supabase Gallery API endpoints (bypass RLS with service role)
+  app.post("/api/gallery/albums", async (req, res) => {
+    try {
+      const { slug, title, description } = req.body;
+      const { data, error } = await supabaseAdmin
+        .from('gallery_albums')
+        .insert({ slug, title, description })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      res.json(data);
+    } catch (err: any) {
+      console.error("Gallery create album error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put("/api/gallery/albums/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      console.log("Update album request:", { id, updates });
+      const { data, error } = await supabaseAdmin
+        .from('gallery_albums')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
+      console.log("Update album success:", data);
+      res.json(data);
+    } catch (err: any) {
+      console.error("Gallery update album error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/gallery/albums/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Delete photos from storage first
+      const { data: photos } = await supabaseAdmin
+        .from('gallery_photos')
+        .select('storage_path')
+        .eq('album_id', id);
+      
+      if (photos && photos.length > 0) {
+        const storagePaths = photos.map((p: any) => p.storage_path);
+        await supabaseAdmin.storage.from('gallery-albums').remove(storagePaths);
+      }
+      
+      // Delete album (CASCADE deletes photos from table)
+      const { error } = await supabaseAdmin
+        .from('gallery_albums')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Gallery delete album error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/gallery/photos", async (req, res) => {
+    try {
+      const { albumId, storagePath, publicUrl, caption, orderIndex } = req.body;
+      const { data, error } = await supabaseAdmin
+        .from('gallery_photos')
+        .insert({
+          album_id: albumId,
+          storage_path: storagePath,
+          public_url: publicUrl,
+          caption,
+          order_index: orderIndex || 0,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      res.json(data);
+    } catch (err: any) {
+      console.error("Gallery add photo error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/gallery/photos/:photoId", async (req, res) => {
+    try {
+      const { photoId } = req.params;
+      
+      // Get storage path
+      const { data: photo } = await supabaseAdmin
+        .from('gallery_photos')
+        .select('storage_path')
+        .eq('id', photoId)
+        .single();
+      
+      if (photo?.storage_path) {
+        await supabaseAdmin.storage.from('gallery-albums').remove([photo.storage_path]);
+      }
+      
+      // Delete from table
+      const { error } = await supabaseAdmin
+        .from('gallery_photos')
+        .delete()
+        .eq('id', photoId);
+      
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Gallery delete photo error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put("/api/gallery/photos/:photoId/order", async (req, res) => {
+    try {
+      const { photoId } = req.params;
+      const { orderIndex } = req.body;
+      const { error } = await supabaseAdmin
+        .from('gallery_photos')
+        .update({ order_index: orderIndex })
+        .eq('id', photoId);
+      
+      if (error) throw error;
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Gallery update photo order error:", err);
+      res.status(500).json({ error: err.message });
     }
   });
 
