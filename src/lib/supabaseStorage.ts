@@ -96,7 +96,11 @@ export async function updateAlbum(
     body: JSON.stringify(updates),
   });
 
-  if (!response.ok) throw new Error('Failed to update album');
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Update album failed:', error);
+    throw new Error(`Failed to update album: ${error}`);
+  }
   return response.json();
 }
 
