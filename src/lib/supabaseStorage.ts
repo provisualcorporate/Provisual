@@ -90,18 +90,22 @@ export async function updateAlbum(
   id: string,
   updates: Partial<Pick<GalleryAlbum, 'title' | 'description' | 'cover_image_url'>>
 ): Promise<GalleryAlbum> {
+  console.log('updateAlbum called with:', { id, updates });
   const response = await fetch(`/api/gallery/albums/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
   });
 
+  console.log('updateAlbum response status:', response.status);
   if (!response.ok) {
     const error = await response.text();
     console.error('Update album failed:', error);
     throw new Error(`Failed to update album: ${error}`);
   }
-  return response.json();
+  const data = await response.json();
+  console.log('updateAlbum success:', data);
+  return data;
 }
 
 // Deletar um álbum (via API)
