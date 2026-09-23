@@ -3,8 +3,15 @@ import { compressImage } from './compressImage';
 
 const SUPABASE_URL = import.meta.env.SUPABASE_URL || 'https://avfoqkigxuoofsztfdbi.supabase.co';
 const SUPABASE_ANON_KEY = import.meta.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2Zm9xa2lneHVvb2ZzenRmZGJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDU0NDMsImV4cCI6MjEwNTY4MTQ0M30.UZg69ECsFZbjfd7iPGSM7OjYCGbTum-bGaPr5rjERAU';
+const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2Zm9xa2lneHVvb2ZzenRmZGJpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDEwNTQ0MywiZXhwIjoyMTA1NjgxNDQzfQ.qi5FhNAs7uZlnYzYG6lpudrmjaptNiaVaQdRIbns0L8';
 
+// Cliente público (leitura)
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Cliente admin — bypassa RLS para operações de escrita (INSERT/UPDATE/DELETE)
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 const BUCKET_NAME = 'gallery-albums';
 
@@ -75,7 +82,7 @@ export async function createAlbum(
   title: string,
   description?: string
 ): Promise<GalleryAlbum> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('gallery_albums')
     .insert({
       slug,
@@ -94,7 +101,7 @@ export async function updateAlbum(
   id: string,
   updates: Partial<Pick<GalleryAlbum, 'title' | 'description' | 'cover_image_url'>>
 ): Promise<GalleryAlbum> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('gallery_albums')
     .update({
       ...updates,
@@ -111,20 +118,20 @@ export async function updateAlbum(
 // Deletar um álbum (e todas as fotos associadas via CASCADE)
 export async function deleteAlbum(id: string): Promise<void> {
   // Primeiro deletar todas as fotos do storage
-  const { data: photos } = await supabase
+  const { data: photos } = await supabaseAdmin
     .from('gallery_photos')
     .select('storage_path')
     .eq('album_id', id);
 
   if (photos && photos.length > 0) {
     const storagePaths = photos.map(p => p.storage_path);
-    await supabase.storage
+    await supabaseAdmin.storage
       .from(BUCKET_NAME)
       .remove(storagePaths);
   }
 
   // Depois deletar o álbum (CASCADE deleta as fotos da tabela)
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('gallery_albums')
     .delete()
     .eq('id', id);
@@ -166,7 +173,7 @@ export async function addPhotoToAlbum(
   caption?: string,
   orderIndex?: number
 ): Promise<GalleryPhoto> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('gallery_photos')
     .insert({
       album_id: albumId,
@@ -197,7 +204,7 @@ export async function listAlbumPhotos(albumId: string): Promise<GalleryPhoto[]> 
 // Deletar uma foto de um álbum
 export async function deletePhotoFromAlbum(photoId: string): Promise<void> {
   // Primeiro obter o storage path
-  const { data: photo } = await supabase
+  const { data: photo } = await supabaseAdmin
     .from('gallery_photos')
     .select('storage_path')
     .eq('id', photoId)
@@ -208,7 +215,7 @@ export async function deletePhotoFromAlbum(photoId: string): Promise<void> {
   }
 
   // Depois deletar da tabela
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('gallery_photos')
     .delete()
     .eq('id', photoId);
@@ -218,7 +225,7 @@ export async function deletePhotoFromAlbum(photoId: string): Promise<void> {
 
 // Atualizar ordem das fotos
 export async function updatePhotoOrder(photoId: string, orderIndex: number): Promise<void> {
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('gallery_photos')
     .update({ order_index: orderIndex })
     .eq('id', photoId);
