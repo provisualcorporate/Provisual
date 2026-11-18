@@ -74,23 +74,32 @@ export default function GaleriaAlbumPage() {
     scrollToPageTop();
   }, [safePage, loading, albumMeta, scrollToPageTop]);
 
-  if (!albumMeta && !loading) {
+  // Álbuns do Supabase não existem em GALLERY_ALBUMS: albumMeta é null até a API responder.
+  if (!albumMeta) {
     return (
       <SiteShell
         title="Galeria"
         breadcrumbs={[{ label: "Início", href: "/" }, { label: "Galeria", href: "/galeria" }, { label: "Álbum" }]}
       >
-        <p className="text-center text-gray-500">Álbum não encontrado.</p>
-        <p className="text-center mt-4">
-          <Link to="/galeria" className="text-[#a21b7e] hover:underline">
-            Voltar à galeria
-          </Link>
-        </p>
+        {loading ? (
+          <div className="flex justify-center py-20 mb-8">
+            <div className="w-10 h-10 border-4 border-[#a21b7e]/30 border-t-[#a21b7e] rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            <p className="text-center text-gray-500">Álbum não encontrado.</p>
+            <p className="text-center mt-4">
+              <Link to="/galeria" className="text-[#a21b7e] hover:underline">
+                Voltar à galeria
+              </Link>
+            </p>
+          </>
+        )}
       </SiteShell>
     );
   }
 
-  const album = albumMeta!;
+  const album = albumMeta;
   const related = allAlbums.filter((a) => a.slug !== album.slug);
   const start = (safePage - 1) * PHOTOS_PER_PAGE;
   const pagePhotos = photos.slice(start, start + PHOTOS_PER_PAGE);
